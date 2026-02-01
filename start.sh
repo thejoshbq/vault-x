@@ -9,7 +9,7 @@ export ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 export PORT=3000
 
 # Start the application
-./bin/budget-system &
+./bin/vault-x &
 
 # Save PID
 echo $! > .pid

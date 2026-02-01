@@ -49,7 +49,7 @@ Backend API at http://localhost:3000
 make build
 
 # Run the compiled binary
-./bin/budget-system
+./bin/vault-x
 ```
 
 Application will be available at http://localhost:3000
@@ -73,7 +73,7 @@ Application will be available at http://localhost:3000
 ## Project Structure
 
 ```
-budget-system/
+vault-x/
 ├── cmd/server/          # Application entry point
 ├── internal/
 │   ├── config/         # Configuration management

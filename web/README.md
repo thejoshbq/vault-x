@@ -31,7 +31,7 @@ A modern, Matrix-themed financial management application for tracking income, ex
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd budget-system/web
+   cd vault-x/web
    ```
 
 2. Install dependencies:

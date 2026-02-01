@@ -12,9 +12,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
 
-	"budget-system/internal/config"
-	"budget-system/internal/middleware"
-	"budget-system/internal/models"
+	"github.com/thejoshbq/vault-x/internal/config"
+	"github.com/thejoshbq/vault-x/internal/middleware"
+	"github.com/thejoshbq/vault-x/internal/models"
 )
 
 type Handler struct {

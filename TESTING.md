@@ -118,20 +118,20 @@ When you're ready to deploy to your Raspberry Pi cluster:
 
 ```bash
 # Build for ARM64 (Raspberry Pi)
-docker buildx build --platform linux/arm64 -t budget-system:arm64 -f Dockerfile .
+docker buildx build --platform linux/arm64 -t vault-x:arm64 -f Dockerfile .
 
 # Or use the original Dockerfile which already targets ARM64
-docker build -t budget-system:latest .
+docker build -t vault-x:latest .
 ```
 
 ### 2. Tag and Push (if using a registry)
 
 ```bash
 # Tag for your registry
-docker tag budget-system:latest your-registry/budget-system:latest
+docker tag vault-x:latest your-registry/vault-x:latest
 
 # Push to registry
-docker push your-registry/budget-system:latest
+docker push your-registry/vault-x:latest
 ```
 
 ### 3. Deploy to k3s
@@ -144,8 +144,8 @@ kubectl apply -f ../src/deployment.yaml
 kubectl apply -f k8s/
 
 # Check status
-kubectl get pods -n budget-system
-kubectl logs -n budget-system deployment/budget-system
+kubectl get pods -n vault-x
+kubectl logs -n vault-x deployment/vault-x
 ```
 
 ## Backup & Restore
@@ -215,7 +215,7 @@ The application is designed to be lightweight:
 ## Support
 
 For issues or questions:
-- Check logs: `./bin/budget-system` output
+- Check logs: `./bin/vault-x` output
 - Review database: `sqlite3 ./data/budget.db`
 - Check the ARCHITECTURE.md for system design
 - Review README.md for full documentation

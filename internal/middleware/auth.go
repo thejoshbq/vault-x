@@ -79,7 +79,7 @@ func GenerateToken(userID int64, email string, secret string, expiry time.Durati
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "budget-system",
+			Issuer:    "vault-x",
 		},
 	}
 

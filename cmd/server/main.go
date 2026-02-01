@@ -9,10 +9,10 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
-	"budget-system/internal/config"
-	"budget-system/internal/database"
-	"budget-system/internal/handlers"
-	"budget-system/internal/middleware"
+	"github.com/thejoshbq/vault-x/internal/config"
+	"github.com/thejoshbq/vault-x/internal/database"
+	"github.com/thejoshbq/vault-x/internal/handlers"
+	"github.com/thejoshbq/vault-x/internal/middleware"
 )
 
 func main() {

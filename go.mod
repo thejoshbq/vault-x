@@ -1,4 +1,4 @@
-module budget-system
+module github.com/thejoshbq/vault-x
 
 go 1.21
 

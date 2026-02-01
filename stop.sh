@@ -9,6 +9,6 @@ if [ -f .pid ]; then
     echo "✅ Budget System stopped (PID: $PID)"
 else
     # Try to find and kill the process
-    pkill -f budget-system
+    pkill -f vault-x
     echo "✅ Budget System stopped"
 fi

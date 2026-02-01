@@ -17,7 +17,7 @@ build-frontend: install-frontend ## Build frontend for production
 	cd web && npm run build
 
 build: build-frontend ## Build Go binary with embedded frontend
-	go build -o bin/budget-system ./cmd/server
+	go build -o bin/vault-x ./cmd/server
 
 run: ## Run the application locally (without Docker)
 	@mkdir -p data backups
@@ -34,7 +34,7 @@ dev: ## Run both frontend and backend in dev mode (in separate terminals)
 	@echo "Run 'make dev-backend' in one terminal and 'make dev-frontend' in another"
 
 docker-build: ## Build Docker image
-	docker build -t budget-system:latest .
+	docker build -t vault-x:latest .
 
 docker-up: ## Start application with Docker Compose
 	docker-compose up -d
