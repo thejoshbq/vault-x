@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod download:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(docker build:*)",
+      "Bash(sudo docker build:*)",
+      "Bash(chmod:*)",
+      "Bash(./setup.sh)",
+      "Bash($HOME/go-1.21.6/bin/go build:*)",
+      "Bash(pkill:*)",
+      "Bash(curl:*)",
+      "Bash(sqlite3:*)",
+      "Bash(tree:*)",
+      "Bash(DATABASE_PATH=./data/budget.db JWT_SECRET=dev-secret-key-change-in-production ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000 PORT=3000 go run:*)",
+      "Bash(ls:*)",
+      "Bash(/home/otis-lab/go-1.21.6/bin/go build:*)",
+      "Bash(./stop.sh:*)",
+      "Bash(./start.sh)",
+      "Bash(ps:*)",
+      "Bash(journalctl:*)",
+      "Bash(go version:*)",
+      "Bash(lsof:*)",
+      "Bash(go run:*)"
+    ]
+  }
+}

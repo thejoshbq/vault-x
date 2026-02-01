@@ -1,0 +1,59 @@
+# Compiled binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Database files (SQLite)
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Backups
+backups/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Process tracking
+*.pid
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Go specific (vendor if using vendoring)
+# Uncomment if you use go mod vendor:
+# vendor/
+
+# Coverage reports
+*.out
+coverage/

@@ -1,0 +1,212 @@
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: budget-system
+---
+# ConfigMap for non-sensitive config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: budget-config
+  namespace: budget-system
+data:
+  ALLOWED_ORIGINS: "http://localhost:3000,https://budget.local"
+  DATABASE_PATH: "/data/budget.db"
+---
+# Secret for sensitive config
+apiVersion: v1
+kind: Secret
+metadata:
+  name: budget-secrets
+  namespace: budget-system
+type: Opaque
+stringData:
+  JWT_SECRET: "CHANGE-THIS-TO-A-SECURE-RANDOM-STRING-IN-PRODUCTION"
+---
+# PersistentVolumeClaim for SQLite database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: budget-data
+  namespace: budget-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path  # k3s default storage class
+  resources:
+    requests:
+      storage: 1Gi
+---
+# PersistentVolumeClaim for backups
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: budget-backups
+  namespace: budget-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: budget-system
+  namespace: budget-system
+  labels:
+    app: budget-system
+spec:
+  replicas: 1  # Single replica for SQLite
+  strategy:
+    type: Recreate  # Required for SQLite - no rolling updates
+  selector:
+    matchLabels:
+      app: budget-system
+  template:
+    metadata:
+      labels:
+        app: budget-system
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: budget-system
+        image: ghcr.io/yourusername/budget-system:latest  # Update with your registry
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: budget-secrets
+              key: JWT_SECRET
+        envFrom:
+        - configMapRef:
+            name: budget-config
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "200m"
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: backups
+          mountPath: /backups
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 3
+          periodSeconds: 10
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: budget-data
+      - name: backups
+        persistentVolumeClaim:
+          claimName: budget-backups
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: budget-system
+  namespace: budget-system
+spec:
+  selector:
+    app: budget-system
+  ports:
+  - port: 80
+    targetPort: 3000
+    name: http
+---
+# Ingress (Traefik - k3s default)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: budget-system
+  namespace: budget-system
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  rules:
+  - host: budget.local  # Update with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: budget-system
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - budget.local
+    secretName: budget-tls  # Create this secret with your TLS cert
+---
+# CronJob for daily backups
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: budget-backup
+  namespace: budget-system
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+          - name: backup
+            image: alpine:3.19
+            command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache sqlite
+              BACKUP_FILE="/backups/budget-$(date +%Y%m%d-%H%M%S).db"
+              sqlite3 /data/budget.db ".backup $BACKUP_FILE"
+              # Keep only last 30 backups
+              ls -t /backups/budget-*.db | tail -n +31 | xargs -r rm
+              echo "Backup completed: $BACKUP_FILE"
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backups
+              mountPath: /backups
+          restartPolicy: OnFailure
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: budget-data
+          - name: backups
+            persistentVolumeClaim:
+              claimName: budget-backups
