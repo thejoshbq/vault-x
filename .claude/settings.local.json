@@ -22,7 +22,10 @@
       "Bash(journalctl:*)",
       "Bash(go version:*)",
       "Bash(lsof:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(ssh:*)",
+      "Bash(tar czf:*)",
+      "Bash(scp:*)"
     ]
   }
 }

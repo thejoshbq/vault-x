@@ -1,0 +1,227 @@
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault-x
+---
+# ConfigMap for non-sensitive config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: budget-config
+  namespace: vault-x
+data:
+  ALLOWED_ORIGINS: "https://boquiren-himalayas.nord,https://100.99.208.102,http://localhost:3000"
+  DATABASE_PATH: "/data/budget.db"
+---
+# Secret for sensitive config (JWT_SECRET will be created separately)
+# DO NOT commit the actual secret to Git
+---
+# PersistentVolumeClaim for SQLite database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: budget-data
+  namespace: vault-x
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path  # k3s default storage class
+  resources:
+    requests:
+      storage: 1Gi
+---
+# PersistentVolumeClaim for backups
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: budget-backups
+  namespace: vault-x
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-x
+  namespace: vault-x
+  labels:
+    app: vault-x
+spec:
+  replicas: 1  # Single replica for SQLite
+  strategy:
+    type: Recreate  # Required for SQLite - no rolling updates
+  selector:
+    matchLabels:
+      app: vault-x
+  template:
+    metadata:
+      labels:
+        app: vault-x
+    spec:
+      # Pin to master node for SQLite database consistency
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - k3s-master
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: vault-x
+        image: vault-x:v1.0.0  # Local image, not from registry
+        imagePullPolicy: Never  # Do not try to pull from registry
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: budget-secrets
+              key: JWT_SECRET
+        envFrom:
+        - configMapRef:
+            name: budget-config
+        resources:
+          limits:
+            memory: "128Mi"  # Increased for Raspberry Pi
+            cpu: "500m"
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: backups
+          mountPath: /backups
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: budget-data
+      - name: backups
+        persistentVolumeClaim:
+          claimName: budget-backups
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-x
+  namespace: vault-x
+spec:
+  selector:
+    app: vault-x
+  ports:
+  - port: 80
+    targetPort: 3000
+    name: http
+---
+# Ingress (Traefik - k3s default)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vault-x
+  namespace: vault-x
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: default
+spec:
+  rules:
+  - host: boquiren-himalayas.nord  # NordVPN meshnet hostname
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vault-x
+            port:
+              number: 80
+  - host: "100.99.208.102"  # NordVPN meshnet IP for direct access
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vault-x
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - boquiren-himalayas.nord
+    - "100.99.208.102"
+    secretName: vault-x-tls  # TLS certificate secret
+---
+# CronJob for daily backups
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: budget-backup
+  namespace: vault-x
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+          - name: backup
+            image: alpine:3.19
+            command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache sqlite
+              BACKUP_FILE="/backups/budget-$(date +%Y%m%d-%H%M%S).db"
+              sqlite3 /data/budget.db ".backup $BACKUP_FILE"
+              # Keep only last 30 backups
+              ls -t /backups/budget-*.db | tail -n +31 | xargs -r rm
+              echo "Backup completed: $BACKUP_FILE"
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backups
+              mountPath: /backups
+          restartPolicy: OnFailure
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: budget-data
+          - name: backups
+            persistentVolumeClaim:
+              claimName: budget-backups

@@ -32,7 +32,7 @@ WORKDIR /app
 COPY --from=builder /app/vault-x .
 
 # Copy frontend build (if exists)
-COPY --from=builder /app/web/dist ./web/dist 2>/dev/null || true
+COPY --from=builder /app/web/dist ./web/dist
 
 # Create data directory
 RUN mkdir -p /data && chown appuser:appuser /data

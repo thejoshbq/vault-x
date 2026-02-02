@@ -1,0 +1,33 @@
+# Alternative: NodePort service for direct phone access
+# This bypasses Traefik ingress and exposes the service directly
+# Apply this if the ingress-based IP access doesn't work
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-x-nodeport
+  namespace: vault-x
+  labels:
+    app: vault-x
+spec:
+  type: NodePort
+  selector:
+    app: vault-x
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30443  # Fixed port for consistent access
+    protocol: TCP
+    name: https
+
+---
+# Update ConfigMap to allow NodePort access
+# This adds the NodePort URL to ALLOWED_ORIGINS
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: budget-config
+  namespace: vault-x
+data:
+  ALLOWED_ORIGINS: "https://boquiren-himalayas.nord,https://100.99.208.102,https://100.99.208.102:30443,http://localhost:3000"
+  DATABASE_PATH: "/data/budget.db"
