@@ -1,4 +1,16 @@
-# Build stage
+# Frontend build stage
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/web
+
+# Copy frontend files
+COPY web/package*.json ./
+RUN npm ci
+
+COPY web/ ./
+RUN npm run build
+
+# Backend build stage
 FROM golang:1.21-alpine AS builder
 
 # Install build dependencies for SQLite
@@ -13,8 +25,11 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build for ARM64 (Raspberry Pi 4) with static linking
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+# Copy frontend build from frontend-builder
+COPY --from=frontend-builder /app/web/dist ./web/dist
+
+# Build for AMD64 with static linking
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
     go build -ldflags="-s -w" -o vault-x ./cmd/server
 
 # Runtime stage - minimal image
@@ -31,7 +46,7 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/vault-x .
 
-# Copy frontend build (if exists)
+# Copy frontend build
 COPY --from=builder /app/web/dist ./web/dist
 
 # Create data directory
