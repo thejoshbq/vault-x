@@ -1,232 +1,58 @@
-# Budget System Architecture
+# Vault X architecture
 
-## Overview
+## Boundaries
 
-A lightweight, containerized personal finance application designed for resource-constrained environments (Raspberry Pi k3s cluster).
+The browser renders the installable Next.js PWA and uses a Supabase anon-key client for authenticated, RLS-protected operations. Server Components and Route Handlers load financial data through the user's cookie-backed Supabase session. Only Edge Functions and narrowly scoped server routes can access AI credentials or the service role.
 
-## Stack Selection
-
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| Backend API | **Go (Fiber)** | Low memory footprint (~10-20MB), fast startup, single binary deployment |
-| Database | **SQLite** | Zero-config, file-based, perfect for single-family use, easy backups |
-| Cache (optional) | **Redis** | Session management, can be skipped initially |
-| Frontend | **React (Vite)** | Static build, served via Go or nginx |
-| Auth | **JWT + bcrypt** | Stateless, no session store needed |
-| Container Runtime | **k3s** | Lightweight Kubernetes for Pi clusters |
-
-### Why Go over Node.js/Python?
-- **Memory**: Go binary ~15MB RAM vs Node.js ~50-100MB
-- **Startup**: <100ms cold start
-- **ARM64 native**: Compiles directly to Pi's architecture
-- **Single binary**: No runtime dependencies
-
-### Why SQLite over PostgreSQL?
-- **Memory**: ~1MB vs ~100MB+ for Postgres
-- **Simplicity**: No separate container needed
-- **Performance**: For single-family use, SQLite handles thousands of transactions/sec
-- **Backup**: Just copy a file
-- **Upgrade path**: Can migrate to Postgres later if needed
-
-## Database Schema
-
-```
-┌─────────────────┐     ┌─────────────────┐
-│     users       │     │    profiles     │
-├─────────────────┤     ├─────────────────┤
-│ id (PK)         │────<│ id (PK)         │
-│ email           │     │ user_id (FK)    │
-│ password_hash   │     │ name            │
-│ created_at      │     │ avatar_color    │
-│ updated_at      │     │ is_owner        │
-└─────────────────┘     │ created_at      │
-                        └────────┬────────┘
-                                 │
-         ┌───────────────────────┼───────────────────────┐
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│     nodes       │     │    budgets      │     │     goals       │
-├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ id (PK)         │     │ id (PK)         │     │ id (PK)         │
-│ profile_id (FK) │     │ profile_id (FK) │     │ profile_id (FK) │
-│ type            │     │ name            │     │ name            │
-│ label           │     │ budgeted        │     │ target          │
-│ institution     │     │ period          │     │ current         │
-│ amount          │     │ created_at      │     │ deadline        │
-│ balance         │     └────────┬────────┘     │ priority        │
-│ apy             │              │              │ created_at      │
-│ metadata (JSON) │              ▼              └─────────────────┘
-│ created_at      │     ┌─────────────────┐
-└────────┬────────┘     │  transactions   │
-         │              ├─────────────────┤
-         ▼              │ id (PK)         │
-┌─────────────────┐     │ budget_id (FK)  │
-│     flows       │     │ amount          │
-├─────────────────┤     │ note            │
-│ id (PK)         │     │ date            │
-│ profile_id (FK) │     │ created_at      │
-│ from_node (FK)  │     └─────────────────┘
-│ to_node (FK)    │
-│ amount          │
-│ label           │
-│ created_at      │
-└─────────────────┘
+```mermaid
+flowchart LR
+  Browser[PWA] --> Next[Next.js]
+  Browser --> Auth[Supabase Auth]
+  Browser --> DB[Postgres and RLS]
+  Browser --> Storage[Private Storage]
+  Storage --> ReceiptFn[Receipt Edge Function]
+  ReceiptFn --> Vision[Vision Provider]
+  DB --> InsightFn[Scheduled Insight Function]
+  InsightFn --> Language[Language Provider]
+  Next --> DB
 ```
 
-## API Endpoints
+## Domain model
 
-### Authentication
-```
-POST   /api/auth/register     Create account
-POST   /api/auth/login        Get JWT token
-POST   /api/auth/refresh      Refresh token
-DELETE /api/auth/logout       Invalidate token
-```
+`households` and `household_members` define tenancy. Accounts hold user-entered balance snapshots. Transactions are the ledger and use positive integer minor units with `kind` indicating direction. Categories classify transactions. Budgets compare ledger spending against a period limit. Recurring bills model future obligations independently from posted transactions. Goals and scenario plans represent planning intent.
 
-### Profiles
-```
-GET    /api/profiles          List profiles for user
-POST   /api/profiles          Create profile
-GET    /api/profiles/:id      Get profile details
-PUT    /api/profiles/:id      Update profile
-DELETE /api/profiles/:id      Delete profile
+Receipts have a state machine:
+
+```text
+uploaded -> processing -> needs_review -> confirmed
+                         \-> failed
 ```
 
-### Nodes (Sankey)
-```
-GET    /api/profiles/:id/nodes          List all nodes
-POST   /api/profiles/:id/nodes          Create node
-PUT    /api/profiles/:id/nodes/:nodeId  Update node
-DELETE /api/profiles/:id/nodes/:nodeId  Delete node
-```
+The extractor stores proposed fields and line items. The `confirm_receipt` database function locks the receipt, validates state and membership, creates the transaction, updates the receipt, and writes an audit event in one transaction.
 
-### Flows (Sankey)
-```
-GET    /api/profiles/:id/flows          List all flows
-POST   /api/profiles/:id/flows          Create flow
-PUT    /api/profiles/:id/flows/:flowId  Update flow
-DELETE /api/profiles/:id/flows/:flowId  Delete flow
-```
+## Financial analysis
 
-### Budgets & Transactions
-```
-GET    /api/profiles/:id/budgets                      List budgets
-POST   /api/profiles/:id/budgets                      Create budget
-PUT    /api/profiles/:id/budgets/:budgetId            Update budget
-DELETE /api/profiles/:id/budgets/:budgetId            Delete budget
-GET    /api/profiles/:id/budgets/:budgetId/transactions   List transactions
-POST   /api/profiles/:id/budgets/:budgetId/transactions   Add transaction
-DELETE /api/profiles/:id/budgets/:budgetId/transactions/:txId  Delete transaction
-```
+Calculations in `src/lib/finance` are deterministic and tested:
 
-### Goals
-```
-GET    /api/profiles/:id/goals          List goals
-POST   /api/profiles/:id/goals          Create goal
-PUT    /api/profiles/:id/goals/:goalId  Update goal
-DELETE /api/profiles/:id/goals/:goalId  Delete goal
-```
+- cash-flow totals
+- savings rate
+- recurring monthly equivalent
+- budget utilization
+- scenario balance projection
 
-### Dashboard / Aggregations
-```
-GET    /api/profiles/:id/dashboard      Get computed dashboard data
-GET    /api/profiles/:id/forecast       Get expense forecast
-```
+AI is not allowed to calculate source metrics. It receives a compact `FinancialSnapshot`, explains patterns, and links users back to the relevant records. Generated cards retain the source period, provider/model, and snapshot through `insight_runs`.
 
-## Kubernetes Deployment
+## Authorization
 
-```yaml
-# Single pod deployment for Pi
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: budget-system
-spec:
-  replicas: 1
-  template:
-    spec:
-      containers:
-      - name: budget-api
-        image: budget-system:latest
-        resources:
-          limits:
-            memory: "64Mi"
-            cpu: "200m"
-          requests:
-            memory: "32Mi"
-            cpu: "100m"
-        volumeMounts:
-        - name: data
-          mountPath: /data
-      volumes:
-      - name: data
-        persistentVolumeClaim:
-          claimName: budget-pvc
-```
+Every household-owned table enables RLS. Policies call the security-definer `is_household_member` helper, whose search path is empty. Storage policies derive the household UUID from the first path segment. The receipt worker additionally validates the caller through a JWT-backed RLS query before using the service role.
 
-## Directory Structure
+## Operations
 
-```
-budget-system/
-├── cmd/
-│   └── server/
-│       └── main.go           # Entry point
-├── internal/
-│   ├── config/
-│   │   └── config.go         # Environment config
-│   ├── database/
-│   │   ├── database.go       # SQLite connection
-│   │   └── migrations.go     # Schema migrations
-│   ├── handlers/
-│   │   ├── auth.go
-│   │   ├── profiles.go
-│   │   ├── nodes.go
-│   │   ├── flows.go
-│   │   ├── budgets.go
-│   │   └── goals.go
-│   ├── middleware/
-│   │   ├── auth.go           # JWT validation
-│   │   └── cors.go
-│   ├── models/
-│   │   └── models.go         # Struct definitions
-│   └── services/
-│       ├── auth.go           # Auth business logic
-│       └── finance.go        # Calculations
-├── web/                      # React frontend (built)
-├── Dockerfile
-├── docker-compose.yml
-├── k8s/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   └── pvc.yaml
-└── go.mod
-```
+- Vercel serves the Next.js application.
+- Supabase hosts Auth, Postgres, private receipt Storage, Edge Functions, and weekly Cron.
+- GitHub Actions checks lint, types, unit tests, production build, browser smoke flows, migrations, and pgTAP policies.
+- `src/instrumentation.ts` is the integration point for OpenTelemetry or a hosted error monitor.
 
-## Security Considerations
+## Deferred architecture
 
-1. **JWT tokens**: Short-lived (15min) with refresh tokens (7 days)
-2. **Password hashing**: bcrypt with cost factor 12
-3. **HTTPS**: Terminate TLS at ingress (Traefik in k3s)
-4. **Input validation**: All inputs sanitized
-5. **Rate limiting**: 100 req/min per IP
-6. **SQLite**: File permissions 600, owned by app user
-
-## Backup Strategy
-
-```bash
-# Daily backup cron job
-0 2 * * * sqlite3 /data/budget.db ".backup /backups/budget-$(date +%Y%m%d).db"
-
-# Keep last 30 days
-find /backups -name "budget-*.db" -mtime +30 -delete
-```
-
-## Future Enhancements
-
-- [ ] Family sharing with permission levels (viewer/editor/admin)
-- [ ] Bank sync via Plaid (requires subscription)
-- [ ] Mobile app (React Native or Flutter)
-- [ ] Export to CSV/PDF
-- [ ] Recurring transaction automation
-- [ ] Budget alerts/notifications
+Bank synchronization, investment market data, native clients, granular household roles, and full offline ledger mutation are not included. The normalized ledger and household tenancy leave extension points for those capabilities without changing the core transaction model.

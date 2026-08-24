@@ -1,188 +1,96 @@
-# Budget System
+# Vault X
 
-A lightweight, containerized personal finance application designed for resource-constrained environments (Raspberry Pi k3s cluster).
+Vault X is a mobile-first personal finance PWA for manually tracking transactions, planning recurring bills and budgets, scanning receipts, and receiving AI-assisted explanations grounded in deterministic financial calculations.
 
-## Tech Stack
+## Stack
 
-- **Backend**: Go (Fiber framework) + SQLite
-- **Frontend**: React + Vite + Tailwind CSS
-- **Container**: Docker / k3s (Kubernetes)
+- Next.js App Router, React, TypeScript, Tailwind CSS
+- Supabase Auth, Postgres, Row Level Security, Storage, Cron, and Edge Functions
+- Vercel deployment
+- Provider-neutral AI boundaries with an OpenAI adapter
+- Vitest, pgTAP, and Playwright
 
-## Features
+## Product areas
 
-- 💰 Cash Flow Visualization (Sankey Diagram)
-- 📊 Budget Tracking
-- 🎯 Savings Goals
-- 👥 Multiple Profiles (Family Support)
-- 🔒 JWT Authentication
-- 📱 Responsive Design
+- **Home:** monthly cash flow, balances, budget progress, upcoming bills, recent activity, and an AI briefing
+- **Transactions:** manual ledger entry, search/filtering, CSV export, duplicate protection, and receipt linkage
+- **Receipts:** private camera/file upload, asynchronous extraction, field confidence, review, and atomic confirmation
+- **Bills:** recurring cadence, due dates, monthly normalization, autopay status, pause, and posting progression
+- **Plan:** budgets, savings goals, and deterministic what-if projections
+- **Insights:** generated cards and Ask Vault, grounded in a server-created aggregate snapshot
 
-## Quick Start (Local Development)
+Bank synchronization and native mobile apps are intentionally outside the first release.
 
-### Prerequisites
+## Local development
 
-- Go 1.21+
-- Node.js 18+
-- Make (optional, for convenience commands)
-
-### Option 1: Development Mode (Recommended for testing)
+Requirements: Node.js 22+, npm, Docker, and the Supabase CLI.
 
 ```bash
-# Install dependencies
-make install-deps
-make install-frontend
-
-# Terminal 1: Start backend
-make dev-backend
-
-# Terminal 2: Start frontend (in another terminal)
-make dev-frontend
+npm install
+cp .env.example .env.local
+npm run db:start
+npm run db:reset
+npm run dev
 ```
 
-Frontend will be available at http://localhost:5173
-Backend API at http://localhost:3000
+Open `http://localhost:3000`. Without working Supabase environment values, the app runs in read-only preview mode with representative data.
 
-### Option 2: Production Build (Local)
+Generate local database types after schema changes:
 
 ```bash
-# Build everything
-make build
-
-# Run the compiled binary
-./bin/vault-x
+npm run db:types
 ```
 
-Application will be available at http://localhost:3000
+## AI and receipt processing
 
-### Option 3: Docker
+Set `OPENAI_API_KEY`, `AI_MODEL`, and a long random `CRON_SECRET` in Supabase Edge Function secrets and Vercel. Deploy functions:
 
 ```bash
-# Build and run with Docker Compose
-make docker-build
-make docker-up
-
-# View logs
-make docker-logs
-
-# Stop
-make docker-down
+npx supabase functions deploy process-receipt
+npx supabase functions deploy generate-insights --no-verify-jwt
 ```
 
-Application will be available at http://localhost:3000
+`process-receipt` verifies the caller's Supabase JWT and checks receipt access through RLS before service-role processing. `generate-insights` requires `x-cron-secret`.
 
-## Project Structure
+For scheduled insight generation, add these values to Supabase Vault:
 
-```
-vault-x/
-├── cmd/server/          # Application entry point
-├── internal/
-│   ├── config/         # Configuration management
-│   ├── database/       # SQLite setup and migrations
-│   ├── handlers/       # HTTP handlers
-│   ├── middleware/     # JWT auth, CORS
-│   └── models/         # Data models
-├── web/                # React frontend
-│   ├── src/
-│   │   ├── App.jsx    # Main React component
-│   │   └── main.jsx   # Entry point
-│   └── package.json
-├── k8s/                # Kubernetes manifests
-├── Dockerfile
-├── docker-compose.yml
-└── Makefile
-```
+- `vault_x_project_url`: the Supabase project URL
+- `vault_x_cron_secret`: the same value as `CRON_SECRET`
 
-## Environment Variables
+The database migration schedules generation at 07:00 UTC every Monday.
 
-Copy `.env.example` to `.env` and configure:
+## Verification
 
 ```bash
-DATABASE_PATH=./data/budget.db
-JWT_SECRET=your-secret-key-here
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-PORT=3000
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+npx supabase test db
+npm run build
 ```
 
-## Database
+`npm run verify` runs lint, type checking, unit tests, and a production build.
 
-The application uses SQLite with the following tables:
-- users
-- profiles
-- nodes (Sankey diagram nodes)
-- flows (money flows between nodes)
-- budgets
-- transactions
-- goals
-- expenses
-- refresh_tokens
+## Deployment
 
-Database is automatically created and migrated on first run.
+1. Create and link a Supabase project: `npx supabase link`.
+2. Apply migrations: `npx supabase db push`.
+3. Configure Auth site/redirect URLs for the Vercel domain.
+4. Deploy both Edge Functions and set their secrets.
+5. Import the repository into Vercel and copy `.env.example` values into project settings.
+6. Add the two Supabase Vault secrets used by the weekly job.
+7. Run the production smoke and RLS isolation checks.
 
-## Kubernetes Deployment
+The former Go/SQLite, Docker, and k3s application was intentionally replaced. A legacy JWT secret was previously present in repository history; rotate it anywhere the old deployment may still be reachable. Deleting the file does not revoke the credential.
 
-For deployment to your Raspberry Pi k3s cluster:
+## Security model
 
-```bash
-# Apply all k8s resources
-kubectl apply -f k8s/
+- Every finance row carries `household_id` and is protected by RLS.
+- Receipt objects are private, size/type constrained, and addressed under household-scoped paths.
+- Service-role and AI credentials never enter browser bundles.
+- Receipt extraction does not create a transaction until the user reviews it.
+- AI insight prompts contain deterministic aggregate snapshots rather than raw receipt images.
+- Money is stored as integer minor units plus an ISO currency code.
 
-# Or use the deployment.yaml from src/
-kubectl apply -f ../src/deployment.yaml
-```
-
-## Make Commands
-
-```bash
-make help              # Show all available commands
-make install-deps      # Install Go dependencies
-make install-frontend  # Install npm dependencies
-make build            # Build production binary
-make run              # Run locally
-make dev-backend      # Run backend in dev mode
-make dev-frontend     # Run frontend in dev mode
-make docker-build     # Build Docker image
-make docker-up        # Start with Docker Compose
-make clean           # Clean build artifacts
-make reset-db        # Delete database (WARNING: destroys data)
-```
-
-## Testing
-
-After starting the application:
-
-1. Navigate to http://localhost:5173 (dev) or http://localhost:3000 (prod)
-2. Register a new account
-3. Create profiles for family members
-4. Add income sources, accounts, and expenses
-5. Set up budgets and track spending
-6. Create savings goals
-
-## Resource Usage
-
-Designed for Raspberry Pi:
-- Memory: ~32-64 MB
-- CPU: 50-200m (0.05-0.2 cores)
-- Storage: ~1 GB (includes database and backups)
-
-## Backup
-
-Database backups can be automated:
-
-```bash
-# Manual backup
-sqlite3 data/budget.db ".backup backups/budget-$(date +%Y%m%d).db"
-```
-
-For k8s deployment, a CronJob is included in the deployment manifest.
-
-## Security
-
-- Passwords hashed with bcrypt (cost 12)
-- JWT tokens with 15-minute expiry
-- Refresh tokens with 7-day expiry
-- HTTPS termination at k3s ingress (Traefik)
-- Input validation on all endpoints
-
-## License
-
-MIT
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system details.

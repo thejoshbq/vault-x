@@ -1,59 +1,29 @@
-# Compiled binaries
-bin/
-*.exe
-*.dll
-*.so
-*.dylib
+# Dependencies and builds
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
 
-# Database files (SQLite)
-data/
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
-# Backups
-backups/
-
-# Environment files
+# Environment and local cloud state
 .env
 .env.local
 .env.*.local
+!.env.example
+.vercel/
+supabase/.branches/
+supabase/.temp/
 
-# Process tracking
-*.pid
-
-# Logs
-logs/
-*.log
-
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-*~
-
-# Editor directories
+# Editors, OS, and logs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Go specific (vendor if using vendoring)
-# Uncomment if you use go mod vendor:
-# vendor/
-
-# Coverage reports
-*.out
+.DS_Store
+Thumbs.db
+*.log
+*.pid
 coverage/
