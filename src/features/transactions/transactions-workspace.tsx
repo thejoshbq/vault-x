@@ -21,7 +21,12 @@ export function TransactionsWorkspace({
   const [receiptOpen, setReceiptOpen] = useState(startReceipt);
   return (
     <>
-      <TransactionsView data={data} startNew={startNew} onScanReceipt={() => setReceiptOpen(true)} />
+      <TransactionsView
+        data={data}
+        categories={categories}
+        startNew={startNew}
+        onScanReceipt={() => setReceiptOpen(true)}
+      />
       <ReceiptCapture
         open={receiptOpen}
         onClose={() => setReceiptOpen(false)}

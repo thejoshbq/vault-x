@@ -10,17 +10,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Vault X",
   },
   icons: [{ rel: "icon", url: "/icon.svg" }],
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f2ea" },
-    { media: "(prefers-color-scheme: dark)", color: "#111713" },
-  ],
+  themeColor: "#121212",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -29,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         {children}
         <PwaRegister />
-        <Toaster position="top-right" richColors />
+        <Toaster position="top-right" theme="dark" richColors />
       </body>
     </html>
   );

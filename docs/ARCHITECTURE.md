@@ -19,7 +19,11 @@ flowchart LR
 
 ## Domain model
 
-`households` and `household_members` define tenancy. Accounts hold user-entered balance snapshots. Transactions are the ledger and use positive integer minor units with `kind` indicating direction. Categories classify transactions. Budgets compare ledger spending against a period limit. Recurring bills model future obligations independently from posted transactions. Goals and scenario plans represent planning intent.
+`households` and `household_members` define tenancy. Accounts hold balance, institution, purpose, owner label, and APY snapshots. `income_sources` and `income_components` separate gross cash pay, employee taxes, employee pre-tax deductions, employer-paid compensation, variable hours, and usable cash assumptions.
+
+Transactions are the actual ledger and use positive integer minor units with `kind` indicating direction. Income deposits can reconcile to an expected income source. Categories classify transactions. Budgets compare actual category spending against a period limit.
+
+`recurring_bills` is the expected obligation registry. Despite the legacy table name, it includes fixed costs, variable monthly allowances, subscriptions, insurance, and contributions. Each obligation records charge cadence, normalized monthly cost, essential status, billing route, payment privacy, and an optional due date. A missing date is an explicit review state, not an estimated date. Goals and scenario plans represent longer-term intent.
 
 Receipts have a state machine:
 
@@ -36,7 +40,12 @@ Calculations in `src/lib/finance` are deterministic and tested:
 
 - cash-flow totals
 - savings rate
-- recurring monthly equivalent
+- expected spendable income after tax reserves
+- recurring monthly equivalent across weekly, monthly, quarterly, semiannual, and annual cadences
+- planned margin versus actual ledger margin
+- irregular-cost sinking fund requirements
+- emergency runway based on essential obligations
+- projected interest at current account balances and APYs
 - budget utilization
 - scenario balance projection
 

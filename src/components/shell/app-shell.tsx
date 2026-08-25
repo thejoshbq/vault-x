@@ -2,6 +2,7 @@
 
 import {
   Bot,
+  Banknote,
   CalendarDays,
   ChartNoAxesCombined,
   Home,
@@ -15,17 +16,23 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { isDemoMode } from "@/lib/env";
 
 const items = [
   { href: "/home", label: "Home", icon: Home },
+  { href: "/income", label: "Income", icon: Banknote },
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/bills", label: "Bills", icon: CalendarDays },
   { href: "/plan", label: "Plan", icon: ChartNoAxesCombined },
   { href: "/insights", label: "Insights", icon: Sparkles },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  previewMode = false,
+}: {
+  children: React.ReactNode;
+  previewMode?: boolean;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -40,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="mt-auto space-y-3">
-          {isDemoMode && (
+          {previewMode && (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--brand-soft)] p-3">
               <p className="eyebrow">Preview mode</p>
               <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
@@ -111,7 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/home" className="focus-ring inline-flex items-center gap-2.5 rounded-lg">
-      <span className="grid size-9 place-items-center rounded-xl bg-[var(--brand-strong)] text-[var(--background)] shadow-sm">
+      <span className="grid size-9 place-items-center rounded-xl bg-[var(--brand)] text-[var(--background)] shadow-sm">
         <span className="text-sm font-black">V</span>
       </span>
       {!compact && (

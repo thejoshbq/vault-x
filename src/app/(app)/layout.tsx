@@ -12,5 +12,5 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     if (!user) redirect("/login");
   }
 
-  return <AppShell>{children}</AppShell>;
+  return <AppShell previewMode={!hasSupabaseEnv}>{children}</AppShell>;
 }

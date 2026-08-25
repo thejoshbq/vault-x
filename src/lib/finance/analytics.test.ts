@@ -6,6 +6,10 @@ describe("deterministic analytics", () => {
   it("creates a snapshot from known dashboard values", () => {
     const snapshot = createFinancialSnapshot(demoDashboard);
     expect(snapshot.surplusMinor).toBe(demoDashboard.incomeMinor - demoDashboard.spendingMinor);
+    expect(snapshot.plannedMarginMinor).toBe(
+      demoDashboard.expectedIncomeMinor - demoDashboard.plannedSpendingMinor,
+    );
+    expect(snapshot.emergencyRunwayMonths).toBe(demoDashboard.emergencyRunwayMonths);
     expect(snapshot.topCategories[0]?.name).toBe("Housing");
   });
 

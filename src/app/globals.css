@@ -1,37 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f2ea;
-  --surface: #fffdf8;
-  --surface-strong: #ffffff;
-  --ink: #17221e;
-  --muted: #69746f;
-  --line: #dedbd1;
-  --brand: #285d52;
-  --brand-strong: #19483f;
-  --brand-soft: #dce9e2;
-  --amber: #a76820;
-  --amber-soft: #f6e6ca;
-  --danger: #9b443a;
-  --shadow: 0 16px 44px rgb(33 50 44 / 8%);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111713;
-    --surface: #18201c;
-    --surface-strong: #202923;
-    --ink: #edf3ef;
-    --muted: #9eaaa3;
-    --line: #303b35;
-    --brand: #89b9a6;
-    --brand-strong: #b7d6c9;
-    --brand-soft: #263e35;
-    --amber: #e1b56e;
-    --amber-soft: #493820;
-    --danger: #e19186;
-    --shadow: 0 20px 50px rgb(0 0 0 / 22%);
-  }
+  color-scheme: dark;
+  --background: #121212;
+  --surface: #1e1e1e;
+  --surface-strong: #2a2a2a;
+  --ink: #bebebe;
+  --muted: #a3a3a6;
+  --line: #333333;
+  --brand: #e68e0d;
+  --brand-strong: #f59e0b;
+  --brand-soft: #2a2114;
+  --amber: #ffc107;
+  --amber-soft: #2a2410;
+  --danger: #d35f5f;
+  --shadow: 0 20px 50px rgb(0 0 0 / 45%);
 }
 
 * {
@@ -39,6 +22,7 @@
 }
 
 html {
+  color-scheme: dark;
   background: var(--background);
 }
 
@@ -46,7 +30,7 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(circle at 85% -10%, rgb(94 139 117 / 13%), transparent 36rem),
+    radial-gradient(circle at 85% -10%, rgb(230 142 13 / 7%), transparent 36rem),
     var(--background);
   font-family: Arial, Helvetica, sans-serif;
   font-feature-settings: "tnum" 1, "ss01" 1;
@@ -65,8 +49,8 @@ a {
 }
 
 ::selection {
-  color: var(--ink);
-  background: var(--brand-soft);
+  color: var(--background);
+  background: var(--brand);
 }
 
 .card {
@@ -74,6 +58,23 @@ a {
   border-radius: 1.25rem;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: var(--shadow);
+}
+
+.card-accent {
+  background: var(--brand-soft);
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--line));
+  box-shadow: none;
+}
+
+.card-accent .eyebrow,
+.card-accent .metric-detail {
+  color: var(--brand-strong);
+  opacity: 1;
+}
+
+.card-accent .metric-number {
+  color: var(--brand-strong);
 }
 
 .eyebrow {
@@ -105,6 +106,16 @@ a {
   outline: none;
 }
 
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
 .button-primary,
 .button-secondary,
 .button-quiet {
@@ -121,9 +132,14 @@ a {
 }
 
 .button-primary {
-  border: 1px solid var(--brand-strong);
+  border: 1px solid var(--brand);
   color: var(--background);
+  background: var(--brand);
+}
+
+.button-primary:hover {
   background: var(--brand-strong);
+  border-color: var(--brand-strong);
 }
 
 .button-secondary {
@@ -134,7 +150,7 @@ a {
 
 .button-quiet {
   border: 1px solid transparent;
-  color: var(--brand-strong);
+  color: var(--brand);
   background: transparent;
 }
 

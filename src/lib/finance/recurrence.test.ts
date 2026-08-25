@@ -9,12 +9,13 @@ describe("recurrence calculations", () => {
   it("normalizes different cadences", () => {
     expect(monthlyEquivalent(120000, "yearly")).toBe(10000);
     expect(monthlyEquivalent(30000, "quarterly")).toBe(10000);
+    expect(monthlyEquivalent(60000, "semiannual")).toBe(10000);
   });
 
   it("excludes paused bills from monthly burden", () => {
     expect(recurringBurden([
-      { id: "1", name: "Active", amountMinor: 1000, currency: "USD", recurrence: "monthly", nextDueOn: "2026-09-01", categoryId: null, autopay: false, status: "active" },
-      { id: "2", name: "Paused", amountMinor: 5000, currency: "USD", recurrence: "monthly", nextDueOn: "2026-09-01", categoryId: null, autopay: false, status: "paused" },
+      { id: "1", name: "Active", amountMinor: 1000, currency: "USD", recurrence: "monthly", nextDueOn: "2026-09-01", categoryId: null, autopay: false, status: "active", expenseType: "fixed", essential: true },
+      { id: "2", name: "Paused", amountMinor: 5000, currency: "USD", recurrence: "monthly", nextDueOn: null, categoryId: null, autopay: false, status: "paused", expenseType: "subscription", essential: false },
     ])).toBe(1000);
   });
 });

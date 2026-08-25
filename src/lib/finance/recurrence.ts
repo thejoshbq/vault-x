@@ -14,6 +14,7 @@ export function nextOccurrence(date: string, recurrence: RecurrenceUnit) {
     weekly: addWeeks(source, 1),
     monthly: addMonths(source, 1),
     quarterly: addQuarters(source, 1),
+    semiannual: addMonths(source, 6),
     yearly: addYears(source, 1),
   }[recurrence];
   return next.toISOString().slice(0, 10);
@@ -24,12 +25,14 @@ export function monthlyEquivalent(amountMinor: number, recurrence: RecurrenceUni
     weekly: 52 / 12,
     monthly: 1,
     quarterly: 1 / 3,
+    semiannual: 1 / 6,
     yearly: 1 / 12,
   }[recurrence];
   return Math.round(amountMinor * factor);
 }
 
-export function dueLabel(date: string, now = new Date()) {
+export function dueLabel(date: string | null, now = new Date()) {
+  if (!date) return "Date needs review";
   const days = differenceInCalendarDays(parseISO(date), now);
   if (days < 0) return `${Math.abs(days)}d overdue`;
   if (days === 0) return "Due today";

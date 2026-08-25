@@ -12,10 +12,11 @@ Vault X is a mobile-first personal finance PWA for manually tracking transaction
 
 ## Product areas
 
-- **Home:** monthly cash flow, balances, budget progress, upcoming bills, recent activity, and an AI briefing
-- **Transactions:** manual ledger entry, search/filtering, CSV export, duplicate protection, and receipt linkage
+- **Home:** expected-versus-actual reconciliation, spendable income, true monthly cost, sinking funds, emergency runway, and an AI briefing
+- **Income:** gross pay, spendable cash, employee taxes, pre-tax deductions, employer-paid benefits, variable hours, and tax-reserve assumptions
+- **Transactions:** actual ledger entry, income-source/category assignment, search/filtering, CSV export, duplicate protection, and receipt linkage
 - **Receipts:** private camera/file upload, asynchronous extraction, field confidence, review, and atomic confirmation
-- **Bills:** recurring cadence, due dates, monthly normalization, autopay status, pause, and posting progression
+- **Bills:** fixed/variable/subscription classification, monthly normalization, semiannual and annual sinking funds, billing route, privacy mask, schedule review, and posting progression
 - **Plan:** budgets, savings goals, and deterministic what-if projections
 - **Insights:** generated cards and Ask Vault, grounded in a server-created aggregate snapshot
 
@@ -40,6 +41,34 @@ Generate local database types after schema changes:
 ```bash
 npm run db:types
 ```
+
+## Private finance import
+
+Sensitive spreadsheet values are intentionally excluded from Git. The default private input lives at `.private/finance-seed.json`, which is ignored by `.gitignore`.
+
+1. Update `ownerEmail` to the email of an existing Supabase Auth user.
+2. Edit income assumptions, account balances/APYs, obligations, billing routes, and due dates as they change.
+3. Validate without connecting to Supabase:
+
+```bash
+npm run data:import -- --validate
+```
+
+4. Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, then preview the changes:
+
+```bash
+npm run data:import
+```
+
+5. Apply the reviewed changes:
+
+```bash
+npm run data:import:apply
+```
+
+The importer is idempotent by stable `sourceKey`. Re-running updates the existing private plan rather than duplicating it; removing an imported item pauses or archives it rather than deleting history. Variable monthly obligations also create or update the current month’s category budgets. Missing due dates remain `null` and appear in the Bills review queue instead of receiving guessed dates.
+
+Income with unknown/unwithheld tax treatment and a zero reserve is shown in Income but excluded from the safe monthly plan until a reserve percentage is configured.
 
 ## AI and receipt processing
 

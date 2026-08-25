@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 const transactionSchema = z.object({
   accountId: z.string().min(1),
   categoryId: z.string().optional(),
+  incomeSourceId: z.string().optional(),
   kind: z.enum(["income", "expense"]),
   merchant: z.string().trim().min(1).max(160),
   amount: z.string().min(1),
@@ -41,6 +42,7 @@ export async function createTransaction(
     household_id: householdId,
     account_id: parsed.data.accountId,
     category_id: parsed.data.categoryId || null,
+    income_source_id: parsed.data.incomeSourceId || null,
     kind: parsed.data.kind,
     merchant: parsed.data.merchant,
     note: parsed.data.note || null,

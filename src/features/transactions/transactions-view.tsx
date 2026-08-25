@@ -3,15 +3,17 @@
 import { Camera, Download, Filter, Paperclip, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { DashboardData } from "@/lib/domain";
-import { formatMoney } from "@/lib/finance/money";
+import { formatMoney, percent } from "@/lib/finance/money";
 import { TransactionForm } from "./transaction-form";
 
 export function TransactionsView({
   data,
+  categories,
   startNew = false,
   onScanReceipt,
 }: {
   data: DashboardData;
+  categories: Array<{ id: string; name: string }>;
   startNew?: boolean;
   onScanReceipt?: () => void;
 }) {
@@ -35,6 +37,24 @@ export function TransactionsView({
         <div className="flex flex-wrap gap-2"><a href="/api/transactions/export" className="button-secondary"><Download size={16} /> Export CSV</a><button className="button-secondary" onClick={onScanReceipt}><Camera size={16} /> Scan receipt</button><button className="button-primary" onClick={() => setFormOpen(true)}><Plus size={16} /> Add transaction</button></div>
       </header>
 
+      <section className="grid gap-3 sm:grid-cols-3">
+        <LedgerMetric
+          label="Income received"
+          value={formatMoney(data.incomeMinor, data.currency)}
+          detail={`${percent(data.incomeMinor, data.expectedIncomeMinor)}% of ${formatMoney(data.expectedIncomeMinor, data.currency)} expected`}
+        />
+        <LedgerMetric
+          label="Spending recorded"
+          value={formatMoney(data.spendingMinor, data.currency)}
+          detail={`${percent(data.spendingMinor, data.plannedSpendingMinor)}% of ${formatMoney(data.plannedSpendingMinor, data.currency)} planned`}
+        />
+        <LedgerMetric
+          label="Actual margin"
+          value={formatMoney(data.incomeMinor - data.spendingMinor, data.currency)}
+          detail={`Planned margin ${formatMoney(data.plannedMarginMinor, data.currency)}`}
+        />
+      </section>
+
       <section className="card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 sm:flex-row sm:items-center">
           <label className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} /><span className="sr-only">Search transactions</span><input className="input pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search merchant or source…" /></label>
@@ -49,7 +69,31 @@ export function TransactionsView({
           {filtered.length === 0 && <div className="p-12 text-center"><p className="font-black">No matching transactions</p><p className="mt-1 text-sm text-[var(--muted)]">Try a different search or filter.</p></div>}
         </div>
       </section>
-      <TransactionForm accounts={data.accounts} open={formOpen} onClose={() => setFormOpen(false)} />
+      <TransactionForm
+        accounts={data.accounts}
+        categories={categories}
+        incomeSources={data.incomeSources}
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+      />
     </div>
+  );
+}
+
+function LedgerMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <article className="card p-5">
+      <p className="eyebrow">{label}</p>
+      <p className="metric-number mt-3 text-2xl font-bold">{value}</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">{detail}</p>
+    </article>
   );
 }

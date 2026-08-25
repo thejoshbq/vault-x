@@ -3,12 +3,17 @@ import { recurringBurden } from "./recurrence";
 
 export interface FinancialSnapshot {
   period: string;
+  expectedIncomeMinor: number;
+  plannedSpendingMinor: number;
+  plannedMarginMinor: number;
   incomeMinor: number;
   spendingMinor: number;
   surplusMinor: number;
   savingsRate: number;
   recurringBurdenMinor: number;
   recurringShare: number;
+  emergencyRunwayMonths: number;
+  setupReviewCount: number;
   budgetUtilization: Array<{ name: string; percent: number }>;
   topCategories: Array<{ name: string; amountMinor: number }>;
 }
@@ -28,14 +33,19 @@ export function createFinancialSnapshot(data: DashboardData): FinancialSnapshot 
   const surplusMinor = data.incomeMinor - data.spendingMinor;
   return {
     period: data.monthLabel,
+    expectedIncomeMinor: data.expectedIncomeMinor,
+    plannedSpendingMinor: data.plannedSpendingMinor,
+    plannedMarginMinor: data.plannedMarginMinor,
     incomeMinor: data.incomeMinor,
     spendingMinor: data.spendingMinor,
     surplusMinor,
     savingsRate: data.incomeMinor ? Math.round((surplusMinor / data.incomeMinor) * 100) : 0,
     recurringBurdenMinor: recurringBurden(data.recurringBills),
-    recurringShare: data.incomeMinor
-      ? Math.round((recurringBurden(data.recurringBills) / data.incomeMinor) * 100)
+    recurringShare: data.expectedIncomeMinor
+      ? Math.round((recurringBurden(data.recurringBills) / data.expectedIncomeMinor) * 100)
       : 0,
+    emergencyRunwayMonths: data.emergencyRunwayMonths,
+    setupReviewCount: data.setupReviewCount,
     budgetUtilization: data.budgets.map((budget) => ({
       name: budget.name,
       percent: budget.limitMinor

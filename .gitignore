@@ -12,6 +12,7 @@ test-results/
 .env.local
 .env.*.local
 !.env.example
+.private/
 .vercel/
 supabase/.branches/
 supabase/.temp/

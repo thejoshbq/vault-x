@@ -29,7 +29,7 @@ export async function generateInsightCards(snapshot: FinancialSnapshot) {
 
 export async function answerFinancialQuestion(snapshot: FinancialSnapshot, question: string) {
   if (!process.env.OPENAI_API_KEY) {
-    return `Based on ${snapshot.period}, income is ${(snapshot.incomeMinor / 100).toFixed(2)}, spending is ${(snapshot.spendingMinor / 100).toFixed(2)}, and the current savings rate is ${snapshot.savingsRate}%. Configure an AI provider for a more detailed grounded explanation.`;
+    return `Based on ${snapshot.period}, expected spendable income is ${(snapshot.expectedIncomeMinor / 100).toFixed(2)}, normalized planned spending is ${(snapshot.plannedSpendingMinor / 100).toFixed(2)}, and the planned margin is ${(snapshot.plannedMarginMinor / 100).toFixed(2)}. Actual ledger income is ${(snapshot.incomeMinor / 100).toFixed(2)} and actual spending is ${(snapshot.spendingMinor / 100).toFixed(2)}. Configure an AI provider for a more detailed grounded explanation.`;
   }
   const { text } = await generateText({
     model: openai(process.env.AI_MODEL ?? "gpt-5-mini"),
@@ -52,10 +52,19 @@ function fallbackInsights(snapshot: FinancialSnapshot): z.infer<typeof insightCa
       actionHref: "/transactions",
     });
   }
+  if (snapshot.setupReviewCount > 0) {
+    insights.push({
+      title: "Planning assumptions need review",
+      body: `${snapshot.setupReviewCount} item${snapshot.setupReviewCount === 1 ? "" : "s"} still lack a due date or tax reserve, so upcoming cash timing is incomplete.`,
+      severity: "attention",
+      actionLabel: "Review bills",
+      actionHref: "/bills",
+    });
+  }
   insights.push({
-    title: snapshot.surplusMinor >= 0 ? "Cash flow is currently positive" : "Spending is ahead of income",
-    body: `The deterministic monthly snapshot shows a ${Math.abs(snapshot.surplusMinor / 100).toFixed(2)} ${snapshot.surplusMinor >= 0 ? "surplus" : "shortfall"} and a ${snapshot.savingsRate}% savings rate.`,
-    severity: snapshot.surplusMinor >= 0 ? "positive" : "attention",
+    title: snapshot.plannedMarginMinor >= 0 ? "The monthly plan has room" : "Planned obligations exceed income",
+    body: `Expected spendable income and normalized obligations produce a ${Math.abs(snapshot.plannedMarginMinor / 100).toFixed(2)} ${snapshot.plannedMarginMinor >= 0 ? "margin" : "shortfall"}. Actual transactions remain separate for reconciliation.`,
+    severity: snapshot.plannedMarginMinor >= 0 ? "positive" : "attention",
     actionLabel: "Explore a scenario",
     actionHref: "/plan",
   });

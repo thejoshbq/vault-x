@@ -17,7 +17,10 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "verify": "npm run lint && npm run typecheck && npm test && npm run build"
+    "data:import": "node scripts/import-private-finance.mjs --dry-run",
+    "data:import:apply": "node scripts/import-private-finance.mjs --apply",
+    "check:private": "node scripts/check-private-data.mjs",
+    "verify": "npm run check:private && npm run lint && npm run typecheck && npm test && npm run build"
   },
   "repository": {
     "type": "git",

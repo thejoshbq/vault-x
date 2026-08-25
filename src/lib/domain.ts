@@ -9,7 +9,7 @@ export type AccountType =
   | "loan";
 
 export type TransactionKind = "income" | "expense" | "transfer";
-export type RecurrenceUnit = "weekly" | "monthly" | "quarterly" | "yearly";
+export type RecurrenceUnit = "weekly" | "monthly" | "quarterly" | "semiannual" | "yearly";
 export type ReceiptStatus =
   | "uploaded"
   | "processing"
@@ -24,6 +24,35 @@ export interface Account {
   balanceMinor: number;
   currency: CurrencyCode;
   color: string;
+  institution?: string;
+  purpose: "operating" | "income_holding" | "emergency" | "dependent_savings" | "investment" | "other";
+  ownerLabel?: string;
+  apy: number;
+}
+
+export interface IncomeComponent {
+  id: string;
+  name: string;
+  type: "gross_pay" | "employee_tax" | "employee_pretax_deduction" | "employer_benefit";
+  monthlyAmountMinor: number;
+}
+
+export interface IncomeSource {
+  id: string;
+  name: string;
+  kind: "salary" | "hourly" | "other";
+  grossMonthlyMinor: number;
+  expectedMonthlyCashMinor: number;
+  employerBenefitsMonthlyMinor: number;
+  employeeTaxesMonthlyMinor: number;
+  employeePretaxMonthlyMinor: number;
+  hourlyRateMinor?: number;
+  expectedHoursPerWeek?: number;
+  variable: boolean;
+  taxTreatment: "withheld" | "unwithheld" | "unknown";
+  taxReservePercent: number;
+  status: "active" | "paused";
+  components: IncomeComponent[];
 }
 
 export interface Category {
@@ -38,6 +67,7 @@ export interface Transaction {
   id: string;
   accountId: string;
   categoryId: string | null;
+  incomeSourceId?: string;
   kind: TransactionKind;
   merchant: string;
   note?: string;
@@ -54,10 +84,16 @@ export interface RecurringBill {
   amountMinor: number;
   currency: CurrencyCode;
   recurrence: RecurrenceUnit;
-  nextDueOn: string;
+  nextDueOn: string | null;
   categoryId: string | null;
   autopay: boolean;
   status: "active" | "paused";
+  expenseType: "fixed" | "variable" | "subscription" | "insurance" | "contribution";
+  billingAccountLabel?: string;
+  paymentMethod?: string;
+  privacyMask?: "none" | "privacy" | "virtual_card";
+  essential: boolean;
+  notes?: string;
 }
 
 export interface Budget {
@@ -91,16 +127,22 @@ export interface Insight {
 export interface DashboardData {
   currency: CurrencyCode;
   monthLabel: string;
+  expectedIncomeMinor: number;
+  plannedSpendingMinor: number;
+  plannedMarginMinor: number;
   incomeMinor: number;
   spendingMinor: number;
   projectedBillsMinor: number;
   accountBalanceMinor: number;
   budgets: Budget[];
   accounts: Account[];
+  incomeSources: IncomeSource[];
   transactions: Transaction[];
   recurringBills: RecurringBill[];
   goals: Goal[];
   insights: Insight[];
+  setupReviewCount: number;
+  emergencyRunwayMonths: number;
   categorySpending: Array<{
     name: string;
     amountMinor: number;

@@ -22,8 +22,8 @@ export function CashFlowChart({
         <AreaChart data={normalized} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
           <defs>
             <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#285d52" stopOpacity={0.28} />
-              <stop offset="100%" stopColor="#285d52" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 5" />
@@ -44,8 +44,8 @@ export function CashFlowChart({
               ) : null
             }
           />
-          <Area type="monotone" dataKey="income" stroke="#285d52" strokeWidth={2.5} fill="url(#incomeFill)" />
-          <Area type="monotone" dataKey="spending" stroke="#b97053" strokeWidth={2} fill="transparent" />
+          <Area type="monotone" dataKey="income" stroke="var(--brand)" strokeWidth={2.5} fill="url(#incomeFill)" />
+          <Area type="monotone" dataKey="spending" stroke="var(--danger)" strokeWidth={2} fill="transparent" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

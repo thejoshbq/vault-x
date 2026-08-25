@@ -64,9 +64,9 @@ export function InsightsView({ data }: { data: DashboardData }) {
         </section>
 
         <section className="card flex min-h-[36rem] flex-col overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-[var(--line)] p-5"><span className="grid size-10 place-items-center rounded-xl bg-[var(--brand-strong)] text-[var(--background)]"><Bot size={19} /></span><div><h2 className="font-black">Ask Vault</h2><p className="text-xs text-[var(--muted)]">Grounded in {data.monthLabel}</p></div></div>
+          <div className="flex items-center gap-3 border-b border-[var(--line)] p-5"><span className="grid size-10 place-items-center rounded-xl bg-[var(--brand)] text-[var(--background)]"><Bot size={19} /></span><div><h2 className="font-black">Ask Vault</h2><p className="text-xs text-[var(--muted)]">Grounded in {data.monthLabel}</p></div></div>
           <div aria-live="polite" className="flex-1 space-y-4 overflow-auto p-5">
-            {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "bg-[var(--brand-strong)] text-[var(--background)]" : "bg-[var(--background)] text-[var(--ink)]"}`}><p>{message.content}</p>{message.period && <p className="mt-2 text-[0.68rem] font-bold uppercase tracking-wider opacity-55">Source: {message.period} snapshot</p>}</div></div>)}
+            {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "bg-[var(--brand)] text-[var(--background)]" : "bg-[var(--background)] text-[var(--ink)]"}`}><p>{message.content}</p>{message.period && <p className="mt-2 text-[0.68rem] font-bold uppercase tracking-wider opacity-55">Source: {message.period} snapshot</p>}</div></div>)}
             {asking && <div className="flex justify-start"><div className="rounded-2xl bg-[var(--background)] px-4 py-3"><LoaderCircle className="animate-spin text-[var(--brand)]" size={18} /></div></div>}
           </div>
           <form className="border-t border-[var(--line)] p-4" onSubmit={(event) => { event.preventDefault(); ask(); }}>

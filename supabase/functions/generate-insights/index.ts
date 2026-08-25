@@ -2,11 +2,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type Snapshot = {
   period: string;
+  expectedIncomeMinor: number;
+  plannedSpendingMinor: number;
+  plannedMarginMinor: number;
   incomeMinor: number;
   spendingMinor: number;
   surplusMinor: number;
   savingsRate: number;
   recurringBurdenMinor: number;
+  emergencyRunwayMonths: number;
+  setupReviewCount: number;
   budgetUtilization: Array<{ name: string; percent: number }>;
 };
 
@@ -77,9 +82,9 @@ class OpenAIInsightProvider implements InsightProvider {
 }
 
 function fallback(snapshot: Snapshot): Card[] {
-  const card: Card = snapshot.surplusMinor >= 0
-    ? { title: "Cash flow is positive", body: `The current period shows a ${(snapshot.surplusMinor / 100).toFixed(2)} surplus and a ${snapshot.savingsRate}% savings rate.`, severity: "positive", actionLabel: "Explore a scenario", actionHref: "/plan" }
-    : { title: "Spending is ahead of income", body: `The current period shows a ${(Math.abs(snapshot.surplusMinor) / 100).toFixed(2)} shortfall. Review recent spending before changing the plan.`, severity: "attention", actionLabel: "Review transactions", actionHref: "/transactions" };
+  const card: Card = snapshot.plannedMarginMinor >= 0
+    ? { title: "The monthly plan has room", body: `Expected spendable income exceeds normalized obligations by ${(snapshot.plannedMarginMinor / 100).toFixed(2)}. Actual cash flow should still be reconciled as transactions arrive.`, severity: "positive", actionLabel: "Explore a scenario", actionHref: "/plan" }
+    : { title: "Planned obligations exceed income", body: `The expected monthly plan is short by ${(Math.abs(snapshot.plannedMarginMinor) / 100).toFixed(2)} before actual transactions are considered.`, severity: "attention", actionLabel: "Review bills", actionHref: "/bills" };
   const budget = snapshot.budgetUtilization.find((item) => item.percent >= 90);
   return budget
     ? [card, { title: `${budget.name} needs attention`, body: `${budget.percent}% of this budget has been used.`, severity: "attention", actionLabel: "Review the plan", actionHref: "/plan" }]
@@ -121,21 +126,57 @@ Deno.serve(async (request) => {
   const { now, start, end } = monthBounds();
   const results = [];
   for (const household of households ?? []) {
-    const [{ data: transactions }, { data: bills }, { data: budgets }] = await Promise.all([
+    const [{ data: transactions }, { data: bills }, { data: budgets }, { data: incomeSources }, { data: accounts }] = await Promise.all([
       supabase.from("transactions").select("kind,amount_minor,category_id").eq("household_id", household.id).gte("occurred_on", start).lte("occurred_on", end),
-      supabase.from("recurring_bills").select("amount_minor,recurrence,status").eq("household_id", household.id),
+      supabase.from("recurring_bills").select("amount_minor,recurrence,status,next_due_on,essential").eq("household_id", household.id),
       supabase.from("budgets").select("name,category_id,limit_minor").eq("household_id", household.id).lte("period_start", end).gte("period_end", start),
+      supabase.from("income_sources").select("expected_monthly_cash_minor,tax_reserve_percent,tax_treatment,status").eq("household_id", household.id),
+      supabase.from("accounts").select("balance_minor,purpose").eq("household_id", household.id).eq("is_archived", false),
     ]);
     const incomeMinor = (transactions ?? []).filter((item) => item.kind === "income").reduce((sum, item) => sum + item.amount_minor, 0);
     const spendingMinor = (transactions ?? []).filter((item) => item.kind === "expense").reduce((sum, item) => sum + item.amount_minor, 0);
-    const factors: Record<string, number> = { weekly: 52 / 12, monthly: 1, quarterly: 1 / 3, yearly: 1 / 12 };
+    const factors: Record<string, number> = { weekly: 52 / 12, monthly: 1, quarterly: 1 / 3, semiannual: 1 / 6, yearly: 1 / 12 };
+    const activeBills = (bills ?? []).filter((bill) => bill.status === "active");
+    const activeIncomeSources = (incomeSources ?? []).filter((source) => source.status === "active");
+    const expectedIncomeMinor = activeIncomeSources.reduce(
+      (sum, source) =>
+        source.tax_treatment !== "withheld" && source.tax_reserve_percent === 0
+          ? sum
+          : sum +
+            source.expected_monthly_cash_minor -
+            (source.tax_treatment === "withheld"
+              ? 0
+              : Math.round(
+                  source.expected_monthly_cash_minor * (source.tax_reserve_percent / 100),
+                )),
+      0,
+    );
+    const plannedSpendingMinor = activeBills.reduce(
+      (sum, bill) => sum + Math.round(bill.amount_minor * factors[bill.recurrence]),
+      0,
+    );
+    const essentialMonthly = activeBills
+      .filter((bill) => bill.essential)
+      .reduce((sum, bill) => sum + Math.round(bill.amount_minor * factors[bill.recurrence]), 0);
+    const emergencyBalance = (accounts ?? [])
+      .filter((account) => account.purpose === "emergency")
+      .reduce((sum, account) => sum + account.balance_minor, 0);
     const snapshot: Snapshot = {
       period: now.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
+      expectedIncomeMinor,
+      plannedSpendingMinor,
+      plannedMarginMinor: expectedIncomeMinor - plannedSpendingMinor,
       incomeMinor,
       spendingMinor,
       surplusMinor: incomeMinor - spendingMinor,
       savingsRate: incomeMinor ? Math.round(((incomeMinor - spendingMinor) / incomeMinor) * 100) : 0,
-      recurringBurdenMinor: (bills ?? []).filter((bill) => bill.status === "active").reduce((sum, bill) => sum + Math.round(bill.amount_minor * factors[bill.recurrence]), 0),
+      recurringBurdenMinor: plannedSpendingMinor,
+      emergencyRunwayMonths: essentialMonthly ? emergencyBalance / essentialMonthly : 0,
+      setupReviewCount:
+        activeBills.filter((bill) => bill.next_due_on === null).length +
+        activeIncomeSources.filter(
+          (source) => source.tax_treatment !== "withheld" && source.tax_reserve_percent === 0,
+        ).length,
       budgetUtilization: (budgets ?? []).map((budget) => ({
         name: budget.name,
         percent: budget.limit_minor ? Math.round(((transactions ?? []).filter((item) => item.kind === "expense" && item.category_id === budget.category_id).reduce((sum, item) => sum + item.amount_minor, 0) / budget.limit_minor) * 100) : 0,

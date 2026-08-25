@@ -1,5 +1,5 @@
 begin;
-select plan(5);
+select plan(7);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -22,6 +22,25 @@ select ok(
 insert into public.accounts (id, household_id, name, type, balance_minor)
 select '00000000-0000-4000-8000-000000000201', id, 'Owner account', 'checking', 0
 from public.households;
+
+insert into public.income_sources (
+  household_id, name, kind, gross_monthly_minor, expected_monthly_cash_minor
+)
+select id, 'Private payroll', 'salary', 500000, 300000
+from public.households;
+
+select throws_like(
+  $$
+    insert into public.income_sources (
+      household_id, name, kind, gross_monthly_minor, expected_monthly_cash_minor,
+      tax_treatment, tax_reserve_percent
+    )
+    select id, 'Double tax reserve', 'salary', 500000, 300000, 'withheld', 10
+    from public.households
+  $$,
+  '%income_sources_check%',
+  'withheld income cannot also subtract a tax reserve'
+);
 
 insert into public.categories (id, household_id, name, kind)
 select '00000000-0000-4000-8000-000000000202', id, 'Temporary', 'expense'
@@ -55,6 +74,12 @@ select is(
   (select count(*)::integer from public.households),
   1,
   'outsider sees only their own generated household'
+);
+
+select is(
+  (select count(*)::integer from public.income_sources),
+  0,
+  'income assumptions remain isolated by household'
 );
 
 select throws_like(

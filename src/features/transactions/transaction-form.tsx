@@ -10,10 +10,14 @@ const initialState: MutationState = {};
 
 export function TransactionForm({
   accounts,
+  categories,
+  incomeSources,
   open,
   onClose,
 }: {
   accounts: DashboardData["accounts"];
+  categories: Array<{ id: string; name: string }>;
+  incomeSources: DashboardData["incomeSources"];
   open: boolean;
   onClose: () => void;
 }) {
@@ -42,6 +46,8 @@ export function TransactionForm({
           <label className="block sm:col-span-2"><span className="mb-1.5 block text-sm font-bold">Merchant or source</span><input className="input" name="merchant" maxLength={160} placeholder="Where did the money move?" required /></label>
           <label className="block"><span className="mb-1.5 block text-sm font-bold">Account</span><select className="input" name="accountId" required>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
           <label className="block"><span className="mb-1.5 block text-sm font-bold">Date</span><input className="input" name="occurredOn" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required /></label>
+          <label className="block sm:col-span-2"><span className="mb-1.5 block text-sm font-bold">Category</span><select className="input" name="categoryId" defaultValue=""><option value="">Uncategorized</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label className="block sm:col-span-2"><span className="mb-1.5 block text-sm font-bold">Income source <span className="font-normal text-[var(--muted)]">(for deposits)</span></span><select className="input" name="incomeSourceId" defaultValue=""><option value="">Not an income deposit</option>{incomeSources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select></label>
           <label className="block sm:col-span-2"><span className="mb-1.5 block text-sm font-bold">Note <span className="font-normal text-[var(--muted)]">(optional)</span></span><textarea className="input min-h-24 resize-y" name="note" maxLength={1000} placeholder="Add useful context" /></label>
           <div className="mt-2 flex justify-end gap-2 sm:col-span-2">
             <button type="button" className="button-secondary" onClick={onClose}>Cancel</button>

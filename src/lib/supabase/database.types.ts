@@ -46,6 +46,42 @@ export type Database = {
           currency: string;
           color: string;
           is_archived: boolean;
+          institution: string | null;
+          purpose: string;
+          owner_label: string | null;
+          apy: number;
+          source_key: string | null;
+        }
+      >;
+      income_sources: Table<
+        BaseRow & {
+          name: string;
+          kind: "salary" | "hourly" | "other";
+          gross_monthly_minor: number;
+          expected_monthly_cash_minor: number;
+          employer_benefits_monthly_minor: number;
+          employee_taxes_monthly_minor: number;
+          employee_pretax_monthly_minor: number;
+          hourly_rate_minor: number | null;
+          expected_hours_per_week: number | null;
+          variable: boolean;
+          tax_treatment: "withheld" | "unwithheld" | "unknown";
+          tax_reserve_percent: number;
+          status: "active" | "paused";
+          source_key: string | null;
+        }
+      >;
+      income_components: Table<
+        BaseRow & {
+          income_source_id: string;
+          name: string;
+          component_type:
+            | "gross_pay"
+            | "employee_tax"
+            | "employee_pretax_deduction"
+            | "employer_benefit";
+          monthly_amount_minor: number;
+          source_key: string | null;
         }
       >;
       categories: Table<
@@ -62,6 +98,7 @@ export type Database = {
         BaseRow & {
           account_id: string;
           category_id: string | null;
+          income_source_id: string | null;
           receipt_id: string | null;
           kind: "income" | "expense" | "transfer";
           merchant: string;
@@ -81,10 +118,17 @@ export type Database = {
           amount_minor: number;
           currency: string;
           recurrence: string;
-          next_due_on: string;
+          next_due_on: string | null;
           autopay: boolean;
           status: "active" | "paused";
           reminder_days: number;
+          expense_type: "fixed" | "variable" | "subscription" | "insurance" | "contribution";
+          billing_account_label: string | null;
+          payment_method: string | null;
+          privacy_mask: "none" | "privacy" | "virtual_card" | null;
+          essential: boolean;
+          source_key: string | null;
+          notes: string | null;
         }
       >;
       budgets: Table<
